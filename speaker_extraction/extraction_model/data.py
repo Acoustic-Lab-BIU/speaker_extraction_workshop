@@ -112,4 +112,62 @@ class CreateFeatures_specific_sig(Dataset):
         return Mix_input,  Ref_input1
     
     
+class CreateFeatures_specific_sig_vec(Dataset):
+    def __init__(self, hp, mix,ref,sr,batch_size, train_mode):
+        super().__init__()
+        self.hp = hp
+        self.mix = mix
+        self.ref = ref
+        self.batch_size = batch_size
+        self.sr = sr
+        # self.listdir = [data_dir]
 
+
+    def __len__(self):
+        return 1
+    
+    def __getitem__(self, idx):
+
+        mix = self.mix
+        ref = self.ref
+        if mix.shape[0] > 1:
+            raise Exception("Sorry, no multi channel allowed") 
+       
+
+          
+        mix,ref = mix.squeeze(),ref.squeeze()
+
+        if self.sr != 8000:
+            raise Exception(f"Unsupported SR of {self.sr}. only supports sr = 8000") 
+
+        tens = 8000 * 5 #seconds. equal to 313 frames in the STFT domain
+
+        Mix_input = []
+
+        if mix.shape[-1] > tens:
+            repeat = int(floor(mix.shape[-1]/tens))
+            remain = tens - (mix.shape[-1] % tens)
+
+
+            for i in range(repeat+1):
+                mix_curr = mix[i*tens:(i+1)*tens]
+                if i==repeat:
+                    mix_curr = torch.cat((mix_curr,torch.zeros(remain)),0)
+
+
+                if i==0:
+                    Mix_inputi = mix_process(self,mix_curr)
+                    Ref_input1  =  ref_process(self,ref)
+                else:
+                    Mix_inputi = mix_process(self,mix_curr)
+                Mix_input.append(Mix_inputi)
+
+        else:
+            remain = tens - (mix.shape[-1] % tens)
+            mix = torch.cat((mix,torch.zeros(remain)),0)
+
+            Mix_inputi = mix_process(self,mix)
+            Ref_input1  =  ref_process(self,ref)
+            Mix_input.append(Mix_inputi)
+
+        return Mix_input,  Ref_input1
