@@ -8,9 +8,9 @@ from pathlib import Path
 from omegaconf import OmegaConf
 
 class Extractor:
-    def __init__(self,parent_dir = '/home/bari/workspace/spring_winter_school/speaker_extraction',save_dir='') -> None:
+    def __init__(self,parent_dir) -> None:
         self.parent_dir = Path(parent_dir)
-        self.ckpt_path = self.parent_dir/'epoch=374,val_loss=-12.62.ckpt'
+        self.ckpt_path = self.parent_dir/'epoch=374,val_loss=-12.62.pth'
         self.save_dir = self.parent_dir/'outputs/mono_s1' # dir of the signal
         self.path_mix = self.save_dir/'mix.wav'
         self.path_ref = self.save_dir/'ref2.wav'
@@ -18,14 +18,8 @@ class Extractor:
         self.load_model()
 
     def load_model(self):
-        ckpt = torch.load(self.ckpt_path, map_location="cpu")['state_dict']
-        the_names = list(ckpt.keys())
-        for name in the_names:
-            new_name = name.split('.',1)[-1]
-            ckpt[new_name] = ckpt.pop(name)
-
         self.model = Extraction_Model(self.hp)
-        self.model.load_state_dict(ckpt)
+        self.model.load_state_dict(torch.load(self.ckpt_pathckpt))
         self.model.eval()
 
     def extract_wave(self,path_mix,path_ref):
@@ -54,50 +48,5 @@ class Extractor:
         return y1_curr
 
 if __name__ == "__main__":
-    e = Extractor()
+    e = Extractor('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/speaker_extraction')
     e.extract_wave(e.path_mix,e.path_ref)
-# def pre_proccess(hp,ckpt_path,path_mix,path_ref):
-#     #######load model########
-
-#     # ckpt = torch.load(ckpt_path, map_location="cpu")['state_dict']
-#     # the_names = list(ckpt.keys())
-#     # for name in the_names:
-#     #     new_name = name.split('.',1)[-1]
-#     #     ckpt[new_name] = ckpt.pop(name)
-
-#     # model = Extraction_Model(hp)
-#     # model.load_state_dict(ckpt)
-#     # model.eval()
-    
-#     #######load data########
-#     # test_set = CreateFeatures_specific_sig(
-#     #                 hp,path_mix,path_ref, 1, train_mode=False)
-  
-#     # testloader = DataLoader(test_set, batch_size=1, shuffle=False,
-#     #                         num_workers=hp.dataloader.num_workers, pin_memory=hp.dataloader.pin_memory)
-
-#     # return model,testloader
-
-
-# # @hydra.main(config_path=str(parent_dir/'deliver'), config_name="config.yaml")
-# def main(hp):
-#     model,testloader =  pre_proccess(hp,str(ckpt_path),str(path_mix),str(path_ref))
-
-
-#     for (mixs,  ref1) in testloader: # mix: list[0-5,5-10,10-15,...]  ref: tensor
-#         i=0
-#         for mix in mixs:
-#             # mix/ref1 dims [1,2,129,-1]  -> [1,real-imaginary,frequncey,frames]
-#             Y_outputs,_, _, _ = model.forward(mix, ref1) #mix and ref1 same size
-#             y1_curr =  post_processing(hp,Y_outputs)
-    
-#             y1 = y1_curr if i==0 else torch.cat((y1,y1_curr),0)
-#             i +=1
-
-#         # ======== save results ========= # 
-#         save_wave(y1, os.path.join(save_dir, 'y_ckpt.wav'))
-        
-
-# if __name__ == '__main__':
-
-#     main(hp)
