@@ -11,18 +11,35 @@ class Extractor:
     def __init__(self,parent_dir) -> None:
         self.parent_dir = Path(parent_dir)
         self.ckpt_path = self.parent_dir/'epoch=374,val_loss=-12.62.pth'
-        self.save_dir = self.parent_dir/'outputs/mono_s1' # dir of the signal
-        self.path_mix = self.save_dir/'mix.wav'
-        self.path_ref = self.save_dir/'ref2.wav'
+        self.save_dir = self.parent_dir.parent/'outputs' # dir of the signal
+        if not self.save_dir.is_dir():
+            self.save_dir.mkdir()
         self.hp = OmegaConf.load(str(self.parent_dir/'extraction_model/config.yaml'))
         self.load_model()
 
     def load_model(self):
         self.model = Extraction_Model(self.hp)
-        self.model.load_state_dict(torch.load(self.ckpt_pathckpt))
+        self.model.load_state_dict(torch.load(self.ckpt_path))
         self.model.eval()
 
-    def extract_wave(self,path_mix,path_ref):
+    def extract_embedding(self,path_ref):
+        self.model.hp.return_emb = True
+        test_set = CreateFeatures_specific_sig(
+                        self.hp,path_ref,path_ref, 1, train_mode=False)
+        testloader = DataLoader(test_set, batch_size=1, shuffle=False,
+                                num_workers=self.hp.dataloader.num_workers, pin_memory=self.hp.dataloader.pin_memory)
+        
+        for (mixs,  ref1) in testloader: # mix: list[0-5,5-10,10-15,...]  ref: tensor
+            i=0
+            for mix in mixs:
+                # mix/ref1 dims [1,2,129,-1]  -> [1,real-imaginary,frequncey,frames]
+                embeds = self.model.forward(mix, ref1) #mix and ref1 same size
+        self.model.hp.return_emb = False
+        return embeds
+        
+    def extract_wave(self,path_mix,path_ref,save_dir=''):
+        if save_dir == '':
+            save_dir=self.save_dir
         test_set = CreateFeatures_specific_sig(
                         self.hp,path_mix,path_ref, 1, train_mode=False)
         testloader = DataLoader(test_set, batch_size=1, shuffle=False,
@@ -49,4 +66,5 @@ class Extractor:
 
 if __name__ == "__main__":
     e = Extractor('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/speaker_extraction')
-    e.extract_wave(e.path_mix,e.path_ref)
+    em = e.extract_embedding('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/speaker_extraction/outputs/mono_s1/ref1.wav')
+    print(em,em.shape)

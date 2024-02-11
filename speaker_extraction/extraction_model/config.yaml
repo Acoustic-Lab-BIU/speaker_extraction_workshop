@@ -1,4 +1,5 @@
 test: True
+return_emb: False
 # ecapa: false
 # embedding_loss: false
 # ri_aug: false

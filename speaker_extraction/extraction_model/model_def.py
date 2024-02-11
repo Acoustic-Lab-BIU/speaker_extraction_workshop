@@ -59,6 +59,9 @@ class Extraction_Model(nn.Module):
         else:
             outputs_model_mag,emb_ref_first_stage,emb_output_first_stage = self.model_mag(mix,ref)
 
+        if self.hp.return_emb:
+            return emb_output_first_stage
+        
         output_model_mag = outputs_model_mag[0]
         if self.hp.test or mix.shape[0]==1:
             output_model_mag = output_model_mag.unsqueeze(0)
