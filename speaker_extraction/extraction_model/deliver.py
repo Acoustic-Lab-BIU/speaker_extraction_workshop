@@ -89,7 +89,32 @@ class Extractor:
         y1_curr = torch.istft(Y_com1, n_fft=self.hp.stft.fft_length,hop_length=self.hp.stft.fft_hop,window=torch.hamming_window(self.hp.stft.fft_length))
         return y1_curr
 
-# if __name__ == "__main__":
-#     e = Extractor('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/speaker_extraction')
-#     em = e.extract_embedding('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/speaker_extraction/outputs/mono_s1/ref1.wav')
-#     print(em,em.shape)
+if __name__ == "__main__":
+    import torchaudio
+    import numpy as np
+    def norm(samples):
+        return 0.9*samples/max(abs(samples))
+
+    def mix(wav1,wav2,sir=0): #mixes two audio signals with sir
+        #check lengths
+        max_len = max(wav1.shape[-1],wav2.shape[-1])
+
+        if torch.is_tensor(wav1) and torch.is_tensor(wav2):
+            wav1 = torch.cat((wav1.squeeze(),torch.zeros(max_len-wav1.shape[-1])))
+            wav2 = torch.cat((wav2.squeeze(),torch.zeros(max_len-wav2.shape[-1])))
+            G =torch.sqrt(10 ** (-sir / 10) * torch.std(wav1) ** 2 / torch.std(wav2) ** 2)
+
+        #np
+        elif isinstance(wav1,(np.ndarray,np.generic)) and isinstance(wav2,(np.ndarray,np.generic)):
+            wav1 = np.concatenate((wav1,np.zeros(max_len-wav1.shape[-1])))
+            wav2 = np.concatenate((wav2,np.zeros(max_len-wav2.shape[-1])))
+            G =np.sqrt(10 ** (-sir / 10) * np.std(wav1) ** 2 / np.std(wav2) ** 2)
+
+        wav1 += G*wav2
+        return norm(wav1).squeeze()
+    e = Extractor()
+    f_1,sr = torchaudio.load('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/audio_samples/female_a_1.wav')
+    m1,sr = torchaudio.load('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/audio_samples/male_a_1.wav')
+    mixed = mix(f_1,m1)
+    ref_female,sr = torchaudio.load('/home/bari/workspace/spring_winter_school/speaker_extraction_workshop/audio_samples/female_a_2.wav')
+    y_hat = e.extract_vec(mix =mixed.unsqueeze(0),sr_mix=sr,ref=ref_female,sr_ref=sr)
