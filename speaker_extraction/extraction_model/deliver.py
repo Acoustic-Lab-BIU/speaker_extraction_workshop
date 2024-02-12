@@ -25,6 +25,7 @@ class Extractor:
         self.model.load_state_dict(torch.load(self.ckpt_path))
         self.model.eval()
 
+    @torch.no_grad()
     def extract_embedding(self,path_ref):
         self.model.hp.return_emb = True
         test_set = CreateFeatures_specific_sig(
@@ -39,8 +40,9 @@ class Extractor:
                 embeds = self.model.forward(mix, ref1) #mix and ref1 same size
         self.model.hp.return_emb = False
         return embeds
-        
-    def extract_wave(self,path_mix,path_ref,sr,save_dir=''):
+    
+    @torch.no_grad()        
+    def extract_wave(self,path_mix,path_ref,save_dir=''):
         if save_dir == '':
             save_dir=self.save_dir
         test_set = CreateFeatures_specific_sig(
@@ -60,10 +62,11 @@ class Extractor:
 
             # ======== save results ========= # 
             save_wave(y1, os.path.join(self.save_dir, 'y_ckpt.wav'))
-    
-    def extract_vec(self,mix,ref):
+            
+    @torch.no_grad()    
+    def extract_vec(self,mix,sr_mix,ref,sr_ref):
         test_set = CreateFeatures_specific_sig_vec(
-                        self.hp,mix,ref, 1, train_mode=False)
+                        self.hp,mix,ref,sr_mix,sr_ref ,1,train_mode=False)
         testloader = DataLoader(test_set, batch_size=1, shuffle=False,
                                 num_workers=self.hp.dataloader.num_workers, pin_memory=self.hp.dataloader.pin_memory)
         # return testloader
@@ -77,8 +80,9 @@ class Extractor:
                 y1 = y1_curr if i==0 else torch.cat((y1,y1_curr),0)
                 i +=1
 
-            return y1
-
+            return y1.detach()
+        
+    @torch.no_grad()
     def post_processing(self,Y_outputs):
         Y_output  = Y_outputs[-1]
         Y_com1 = Y_output[0,:,:] + 1j*Y_output[1,:,:]

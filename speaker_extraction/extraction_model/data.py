@@ -84,7 +84,7 @@ class CreateFeatures_specific_sig(Dataset):
         Mix_input = []
 
         if mix.shape[-1] > tens:
-            repeat = int(floor(mix.shape[-1]/tens))
+            repeat = int(mix.shape[-1]//tens)
             remain = tens - (mix.shape[-1] % tens)
 
 
@@ -113,13 +113,14 @@ class CreateFeatures_specific_sig(Dataset):
     
     
 class CreateFeatures_specific_sig_vec(Dataset):
-    def __init__(self, hp, mix,ref,sr,batch_size, train_mode):
+    def __init__(self, hp, mix,ref,sr_mix,sr_ref,batch_size, train_mode):
         super().__init__()
         self.hp = hp
         self.mix = mix
         self.ref = ref
         self.batch_size = batch_size
-        self.sr = sr
+        self.sr_mix = sr_mix
+        self.sr_ref = sr_ref
         # self.listdir = [data_dir]
 
 
@@ -137,17 +138,17 @@ class CreateFeatures_specific_sig_vec(Dataset):
           
         mix,ref = mix.squeeze(),ref.squeeze()
 
-        if self.sr != 8000:
-            raise Exception(f"Unsupported SR of {self.sr}. only supports sr = 8000") 
-
+        if self.sr_mix != 8000:
+            mix = F.resample(mix, self.sr_mix, 8000)
+        if self.sr_ref != 8000:
+            ref = F.resample(ref, self.sr_ref, 8000)
         tens = 8000 * 5 #seconds. equal to 313 frames in the STFT domain
 
         Mix_input = []
 
         if mix.shape[-1] > tens:
-            repeat = int(floor(mix.shape[-1]/tens))
+            repeat = int(mix.shape[-1]//tens)
             remain = tens - (mix.shape[-1] % tens)
-
 
             for i in range(repeat+1):
                 mix_curr = mix[i*tens:(i+1)*tens]
